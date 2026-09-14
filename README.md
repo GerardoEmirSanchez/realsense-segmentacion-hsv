@@ -12,6 +12,31 @@ realsense-segmentacion-hsv/
 
 ---
 
+## Paso 0: Configuración en Windows (Host)
+
+### 1. Instalar `usbipd-win`
+
+En **PowerShell (como Administrador)**:
+```PowerShell
+winget install --interactive --exact dorssel.usbipd-win
+```
+### 2. Enlazar la cámara Intel RealSense a WSL
+Con la cámara conectada a un puerto USB 3.0:
+1. Lista los dispositivos USB conectados para localizar el `BUSID` de la RealSense:
+```PowerShell
+   usbipd list
+   
+```
+2. Comparte el puerto del dispositivo con WSL (solo se requiere una vez):
+```PowerShell
+   usbipd bind --busid <TU-BUSID>
+```
+3. Conectar el dispositivo a la instancia activa de WSL:
+```PowerShell
+   usbipd attach --wsl --busid <TU-BUSID>
+```
+
+
 ## Paso 1: Creación del Directorio Local y Configuración de Git
 Ejecuta en la terminal de Ubuntu (WSL2):
 
@@ -19,11 +44,13 @@ Ejecuta en la terminal de Ubuntu (WSL2):
 # 1. Crear y acceder a la carpeta del nuevo proyecto
 mkdir -p ~/realsense-segmentacion-hsv
 cd ~/realsense-segmentacion-hsv
-
+```
+```bash
 # 2. Inicializar repositorio local
 git init
 git branch -M main
-
+```
+```bash
 # 3. Crear .gitignore
 cat << 'EOF' > .gitignore
 vision_env/
@@ -34,7 +61,8 @@ capture/
 *.png
 .vscode/
 EOF
-
+```
+```bash
 # 4. Crear requirements.txt
 cat << 'EOF' > requirements.txt
 pyrealsense2
