@@ -232,11 +232,11 @@ Sesión 2: Mini-Retos Prácticos de Segmentación y Disparadores Robóticos
 
 INSTRUCCIONES PARA EL EQUIPO:
 1. Trabajar en parejas durante 15 minutos.
-2. Completar las tres funciones marcadas:
+2. Completar las tres funciones marcadas con operaciones de NumPy y OpenCV:
       - reto_1_segmentar_amarillo(frame, hsv)
       - reto_2_mascara_inversa(frame, hsv)
       - reto_3_trigger_proximidad(frame, hsv)
-3. PROHIBIDO usar ciclos 'for'. Todo debe ser matricial con OpenCV y NumPy.
+3. PROHIBIDO usar ciclos 'for'. Todo el procesamiento debe ser matricial.
 4. Para evaluar su avance en vivo:
       - Ejecuten: python s2_mini_retos_estudiantes.py
       - Abran en Chrome/Edge en Windows: http://localhost:5001
@@ -274,23 +274,25 @@ def adquirir_frame():
     except Exception:
         return None
 
+# Umbral calibrado para detección de proximidad real (distancia de agarre)
+UMBRAL_DISTANCIA_AGARRE = 25000
+
 # ============================================================================
 # MINI-RETOS EN PAREJAS (EDITAR ÚNICAMENTE ESTA SECCIÓN)
 # ============================================================================
 
 def reto_1_segmentar_amarillo(frame, hsv):
     """
-    RETO 1: Calibración de Rango para Pieza Amarilla/Dorada
-    Objetivo: Generar una máscara binaria que aísle exclusivamente objetos amarillos.
-    Pista: El matiz H del amarillo en OpenCV (0-179) se ubica entre 20 y 35.
+    RETO 1: Calibración de Rango para Pieza Amarilla
+    Objetivo: Aislar exclusivamente el tono amarillo (H: 20-35 en OpenCV).
+    Retornar la máscara binaria en 3 canales (cv2.cvtColor a BGR).
     """
     salida = frame.copy()
 
     # ------------------------------------------------------------------------
     # [CÓDIGO ALUMNOS - RETO 1]
-    # Definir lower_yellow y upper_yellow usando np.array([H, S, V])
-    # Aplicar cv2.inRange sobre 'hsv'
-    # Retornar la máscara resultante (puede ser 1 canal o 3 canales)
+    # Definir lower_yellow y upper_yellow
+    # Aplicar cv2.inRange y morfología matemática
     # ------------------------------------------------------------------------
 
     return salida
@@ -299,15 +301,14 @@ def reto_1_segmentar_amarillo(frame, hsv):
 def reto_2_mascara_inversa(frame, hsv):
     """
     RETO 2: Segmentación Inversa (Eliminación de la Pieza)
-    Objetivo: Mostrar el entorno excepto la pieza. La pieza debe quedar negra
-              y el resto de la escena visible a color.
-    Restricción: Utilizar operaciones bitwise (cv2.bitwise_not / cv2.bitwise_and).
+    Objetivo: Conservar el entorno y colocar en negro absoluto la pieza amarilla.
+    Restricción: Utilizar operaciones lógicas bitwise (cv2.bitwise_not / cv2.bitwise_and).
     """
     salida = frame.copy()
 
     # ------------------------------------------------------------------------
     # [CÓDIGO ALUMNOS - RETO 2]
-    # Invertir la máscara del objeto y aplicarla sobre el frame original.
+    # Invertir la máscara y aplicarla sobre frame
     # ------------------------------------------------------------------------
 
     return salida
@@ -316,15 +317,15 @@ def reto_2_mascara_inversa(frame, hsv):
 def reto_3_trigger_proximidad(frame, hsv):
     """
     RETO 3: Disparador Cinemático de Proximidad para el Robot Continuum
-    Objetivo: Calcular el área M00 de la pieza.
-      - Si Área >= 15,000 px: Recuadro VERDE con texto "LISTO PARA AGARRE".
-      - Si Área < 15,000 px: Recuadro ROJO con texto "FUERA DE RANGO".
+    Objetivo: Calcular el área M00 de la pieza:
+      - Si Área >= 25,000 px (Cerca): Recuadro VERDE y texto "LISTO PARA AGARRE".
+      - Si Área < 25,000 px (Lejos/Ausente): Recuadro ROJO y texto "FUERA DE RANGO".
     """
     salida = frame.copy()
 
     # ------------------------------------------------------------------------
     # [CÓDIGO ALUMNOS - RETO 3]
-    # Calcular momentos de la máscara, evaluar condición y dibujar alerta.
+    # Calcular momentos espaciales de la máscara y condicionar alertas gráficas
     # ------------------------------------------------------------------------
 
     return salida
@@ -354,7 +355,7 @@ HTML_DASHBOARD = """
         <div class="card"><h3>1. Entrada Original (BGR)</h3><img src="/stream/orig"></div>
         <div class="card"><h3>2. Reto 1: Máscara Amarilla</h3><img src="/stream/r1"></div>
         <div class="card"><h3>3. Reto 2: Fondo sin Pieza</h3><img src="/stream/r2"></div>
-        <div class="card"><h3>4. Reto 3: Disparador de Agarre</h3><img src="/stream/r3"></div>
+        <div class="card"><h3>4. Reto 3: Disparador de Agarre (Min: 25k px)</h3><img src="/stream/r3"></div>
     </div>
 </body>
 </html>
@@ -436,39 +437,46 @@ def adquirir_frame():
 
 KERNEL = np.ones((5, 5), np.uint8)
 
+# Rango óptimo para amarillo (rueda de prueba)
+LOWER_YELLOW = np.array([20, 100, 100])
+UPPER_YELLOW = np.array([35, 255, 255])
+
+# Umbral calibrado: sólo activa si la pieza está cerca de la cámara
+UMBRAL_AGARRE = 25000
+
 def reto_1_segmentar_amarillo(frame, hsv):
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([35, 255, 255])
-    mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask = cv2.inRange(hsv, LOWER_YELLOW, UPPER_YELLOW)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, KERNEL)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, KERNEL)
     return cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
 def reto_2_mascara_inversa(frame, hsv):
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([35, 255, 255])
-    mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask = cv2.inRange(hsv, LOWER_YELLOW, UPPER_YELLOW)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, KERNEL)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, KERNEL)
     mask_inv = cv2.bitwise_not(mask)
     return cv2.bitwise_and(frame, frame, mask=mask_inv)
 
 def reto_3_trigger_proximidad(frame, hsv):
     salida = frame.copy()
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([35, 255, 255])
-    mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask = cv2.inRange(hsv, LOWER_YELLOW, UPPER_YELLOW)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, KERNEL)
-    
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, KERNEL)
+
     M = cv2.moments(mask)
     area = M["m00"]
-    
-    if area >= 15000:
+
+    if area >= UMBRAL_AGARRE:
+        # Condición CUMPLIDA: Objeto cerca de la cámara
         cv2.rectangle(salida, (20, 20), (620, 460), (0, 255, 0), 4)
         cv2.putText(salida, f"LISTO PARA AGARRE (Area: {int(area)} px)", (40, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
     else:
+        # Condición NO CUMPLIDA: Objeto lejos o ausente
         cv2.rectangle(salida, (20, 20), (620, 460), (0, 0, 255), 2)
-        cv2.putText(salida, f"FUERA DE RANGO (Area: {int(area)} px)", (40, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        cv2.putText(salida, f"FUERA DE RANGO (Area: {int(area)} px / Min: {UMBRAL_AGARRE})", (40, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+
     return salida
 
 app = Flask(__name__)
@@ -491,7 +499,7 @@ HTML_DASHBOARD = """
         <div class="card"><h3>1. Original BGR</h3><img src="/stream/orig"></div>
         <div class="card"><h3>2. Reto 1 Resuelto</h3><img src="/stream/r1"></div>
         <div class="card"><h3>3. Reto 2 Resuelto</h3><img src="/stream/r2"></div>
-        <div class="card"><h3>4. Reto 3 Resuelto</h3><img src="/stream/r3"></div>
+        <div class="card"><h3>4. Reto 3: Disparador Calibrado (25k px)</h3><img src="/stream/r3"></div>
     </div>
 </body>
 </html>
@@ -525,50 +533,7 @@ EOF
 
 ---
 
-## Paso 5: `README.md` Completo del Repositorio
-Genera la documentación oficial ejecutando este bloque:
 
-```bash
-cat << 'EOF' > ~/realsense-segmentacion-hsv/README.md
-# MR3005C: Segmentación HSV y Tracking Cinemático con Intel RealSense en WSL2
-
-Pipeline de visión por computadora para la segmentación de piezas bajo condiciones de iluminación no controladas utilizando cámaras Intel RealSense (serie D400), OpenCV y streaming local vía Flask en entornos WSL2 (Ubuntu).
-
----
-
-## Índice de Contenidos
-1. [Arquitectura del Sistema](#1-arquitectura-del-sistema)
-2. [Protocolo de Arranque y Enlace USB](#2-protocolo-de-arranque-y-enlace-usb)
-3. [Instalación de Dependencias](#3-instalación-de-dependencias)
-4. [Ejecución del Pipeline Principal (`s2_segmentacion_hsv.py`)](#4-ejecución-del-pipeline-principal)
-5. [Dinámica de Mini-Retos (`s2_mini_retos_estudiantes.py`)](#5-dinámica-de-mini-retos)
-6. [Cálculo del Vector de Error Cinemático](#6-cálculo-del-vector-de-error-cinemático)
-7. [Solución de Problemas Frecuentes](#7-solución-de-problemas-frecuentes)
-
----
-
-## 1. Arquitectura del Sistema
-
-En entornos WSL2, el compositor gráfico WSLg presenta bloqueos recurrentes al renderizar ventanas continuas de `cv2.imshow()`. Para garantizar robustez:
-* **Adquisición:** `pyrealsense2` adquiere cuadros BGR a 640x480 y 30 FPS.
-* **Procesamiento:** Conversión al espacio cilíndrico HSV, umbralización dual para mitigar el wrap-around del canal rojo, y filtrado morfológico (Apertura y Clausura).
-* **Cinemática:** Extracción del centroide $(\bar{x}, \bar{y})$ mediante momentos espaciales ($M_{10}/M_{00}, M_{01}/M_{00}$) y cálculo del vector de desviación respecto al centro óptico $(320, 240)$.
-* **Visualización:** Servidor HTTP local con Flask que entrega un flujo multipart JPEG directamente al navegador en Windows (`localhost:5000` y `localhost:5001`).
-
----
-
-## 2. Protocolo de Arranque y Enlace USB
-
-Al reiniciar Windows o reconectar la cámara, sigue estrictamente este orden:
-
-### Paso 1: Abrir la terminal de Ubuntu
-Abre la terminal de Ubuntu desde el menú Inicio de Windows y déjala abierta para inicializar la máquina virtual.
-
-### Paso 2: Enlazar la cámara en PowerShell (Administrador)
-```powershell
-usbipd list
-usbipd attach --wsl --busid <BUSID> --auto-attach
-```
 
 ### Paso 3: Configurar permisos en Ubuntu
 ```bash
