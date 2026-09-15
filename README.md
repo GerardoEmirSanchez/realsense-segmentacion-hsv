@@ -535,7 +535,7 @@ EOF
 
 
 
-### Paso 3: Configurar permisos en Ubuntu
+### Paso 5: Configurar permisos en Ubuntu
 ```bash
 sudo chmod 666 /dev/video* 2>/dev/null
 sudo chmod -R 777 /dev/bus/usb/ 2>/dev/null
